@@ -2,14 +2,11 @@
   'use strict';
 
   const CURRENT_APP_ID = 42;
-  const FLOWNAME = 'ArtDesign';
+  const FLOW_NAME = 'ArtDesign';
 
   const currentUser = kintone.getLoginUser();
   const FLOW_APP_ID = 44;
   const FLOW_ROLE_APP_ID = 45;
-
-  // 匯入 外部 config.js 的設定
-  // const { CURRENT_APP_ID, FLOWNAME, FLOW_APP_ID, FLOW_ROLE_APP_ID } = CONFIG;
 
   // 草稿 -> (送到第一位審核者手中) -> 待審核 -> (簽核) -> 處理中 -> (確認完成) -> 完成
   //                                 ⤤ (發現下一位簽核者) ⤾
@@ -157,14 +154,14 @@
     }
    
     async function fetchSecondApproverFlowRoleCodes() {
-      const query = `flowName = "${FLOWNAME}" order by seq asc`;
+      const query = `flowName = "${FLOW_NAME}" order by seq asc`;
 
       return kintone.api('/k/v1/records.json', 'GET', { "app": FLOW_APP_ID, query: query }).then(function(resp) {
         if (resp?.records?.length > 0) {
           const roles = resp.records.map(rec => rec.role.value);
           return roles;
         } else {
-          console.warn(`cannot find flow with name "${FLOWNAME}"`);
+          console.warn(`cannot find flow with name "${FLOW_NAME}"`);
         }
       });
     }

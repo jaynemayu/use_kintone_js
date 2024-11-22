@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Directory</title>
+    <script>
+        async function fetchDirectory() {
+            const username = "jaynemayu"; // 替換為您的 GitHub 使用者名稱
+            const repo = "use_kintone_js";   // 替換為您的儲存庫名稱
+            const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/`;
+
+            const response = await fetch(apiUrl);
+            const files = await response.json();
+
+            const fileList = document.getElementById("file-list");
+            files.forEach(file => {
+                const li = document.createElement("li");
+                const link = document.createElement("a");
+                link.href = file.html_url;
+                link.textContent = file.name;
+                li.appendChild(link);
+                fileList.appendChild(li);
+            });
+        }
+        window.onload = fetchDirectory;
+    </script>
+</head>
+<body>
+    <h1>Available Files</h1>
+    <ul id="file-list"></ul>
+</body>
+</html>
