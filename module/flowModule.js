@@ -69,7 +69,7 @@ async function handleProcessStatusChange(flowName) {
 
 async function updateProcessStatusToLatest(flowId, event) {
   if (event.record.currentApprover.value.length === 0) {
-    const variables = { app: CURRENT_APP_ID, id: flowId, action: ACTION.CONFIRM, assignee: currentUser.code };
+    const variables = { app: CURRENT_APP_ID, id: flowId, action: ACTION.CONFIRM };
     await kintone.api('/k/v1/record/status.json', 'PUT', variables);
   } else {
     const variables = { app: CURRENT_APP_ID, id: flowId, action: ACTION.FIND_NEXT_APPROVER };
@@ -98,8 +98,7 @@ async function fetchSupervisorUsers(userId) {
 
   const users = await kintone.api('/v1/users.json', 'GET', { ids: supervisorUserIds })
                              .then(function(resp) { return resp.users })
-                             
-  console.log(users);
+
   return users.sort((a, b) => {
                 const indexA = supervisorUserIds.indexOf(a.id.value);
                 const indexB = supervisorUserIds.indexOf(b.id.value);
