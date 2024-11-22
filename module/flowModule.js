@@ -86,7 +86,7 @@ async function fetchAllFlowApproverUsers(user) {
   const flowRoleUsers = await fetchFlowRoleUsersByFlowRoleCodes(flowRoleCodes);
 
   let users = [...supervisorUsers, ...flowRoleUsers];
-
+  
   // 移掉重複簽核者，但是越後面越優先保留
   users = users.reverse().filter((value, index, self) => self.findIndex(v => v.code === value.code) === index).reverse();
 
@@ -99,7 +99,7 @@ async function fetchSupervisorUsers(userId) {
   const users = await kintone.api('/v1/users.json', 'GET', { ids: supervisorUserIds })
                              .then(function(resp) { return resp.users })
                              
-
+  console.log(users);
   return users.sort((a, b) => {
                 const indexA = supervisorUserIds.indexOf(a.id.value);
                 const indexB = supervisorUserIds.indexOf(b.id.value);
