@@ -1,26 +1,90 @@
 (function() {
   'use strict';
 
-  kintone.events.on(['app.record.create.show'], async function(event) {
-    const FLOW_APP_ID = 44;
-    const FLOW_ROLE_APP_ID = 45;
-    const FLOWNAME = 'ArtDesign';
+  const CURRENT_APP_ID = 42;
+  const FLOWNAME = 'ArtDesign';
 
-    var user = kintone.getLoginUser();
-    const orgName = await fetchOrgName(user.code);
-    const flowApproverUsers = await fetchAllFlowApproverUsers();
+  const currentUser = kintone.getLoginUser();
+  const FLOW_APP_ID = 44;
+  const FLOW_ROLE_APP_ID = 45;
+
+  // 匯入 外部 config.js 的設定
+  // const { CURRENT_APP_ID, FLOWNAME, FLOW_APP_ID, FLOW_ROLE_APP_ID } = CONFIG;
+
+  // 草稿 -> (送到第一位審核者手中) -> 待審核 -> (簽核) -> 處理中 -> (確認完成) -> 完成
+  //                                 ⤤ (發現下一位簽核者) ⤾
+  //   註:
+  //      括號內為動作名稱，未有括號則為狀態名稱
+  //      確認完成 跟 發現下一位簽核者 需要在狀態變更後執行確認
+  const STATUS = {
+    DRAFT: '草稿',
+    PENDING: '待審核',
+    PROCESSING: '處理中',
+    DONE: '完成'
+  }
+  const ACTION = {
+    SEND_TO_FIRST_APPROVER: '送到第一位審核者手中',
+    APPROVE: '簽核',
+    CONFIRM: '確認完成',
+    FIND_NEXT_APPROVER: '發現下一位簽核者'
+  }
+
+  kintone.events.on('app.record.detail.show', async function(event) {
+    if (event.record['狀態'].value === STATUS.PROCESSING) {
+      await updateProcessStatusToLatest(event.record['$id'].value);
+      location.reload();
+    }
+
+    async function updateProcessStatusToLatest(flowId) {
+      if (event.record.currentApprover.value.length === 0) {
+        const variables = { app: CURRENT_APP_ID, id: flowId, action: ACTION.CONFIRM, assignee: currentUser.code };
+        await kintone.api('/k/v1/record/status.json', 'PUT', variables);
+      } else {
+        const variables = { app: CURRENT_APP_ID, id: flowId, action: ACTION.FIND_NEXT_APPROVER };
+        await kintone.api('/k/v1/record/status.json', 'PUT', variables);
+      }
+    }
+  });
+
+  kintone.events.on('app.record.detail.process.proceed', async function(event) {
+    const record = event.record;
+    const nextStatus = event.nextStatus.value;
+    const approverList = event.record['approvers'].value;
+
+    if (nextStatus === STATUS.DRAFT) {
+      record.currentApprover.value = [record.applyUser.value];
+    } else if (nextStatus === STATUS.PENDING) {
+      record.currentApprover.value = [approverList[0]];
+    } else if (nextStatus === STATUS.PROCESSING) {
+      const currentApproverCode = event.record.currentApprover.value[0]?.code;
+      const approverList = event.record.approvers.value;
+      const nextApproverIndex = approverList.findIndex(a => a.code === currentApproverCode) + 1;
+
+      if (nextApproverIndex < approverList.length) {
+        record.currentApprover.value = [approverList[nextApproverIndex]]
+      } else {
+        record.currentApprover.value = []
+      }
+    } else if (nextStatus === STATUS.DONE) {
+      record.currentApprover.value = [];
+    }
+
+    return event;
+  });
+
+  kintone.events.on(['app.record.create.show'], async function(event) {
+    const orgName = await fetchOrgName(currentUser.code);
+    const flowApproverUsers = await fetchAllFlowApproverUsers(currentUser);
 
     event.record['projectName'].value = `[${orgName}]`;
     event.record['approvers'].value = flowApproverUsers;
-
-    console.log(event.record)
-    // 把 flowApproverUsers 秀在 approversLabel 空白欄內
+    event.record['currentApprover'].value = [{ code: currentUser.code, name: currentUser.name }]
 
     return event;
 
     // ---function start-------------------------------------------------------------------------
     // 取得所有簽核者
-    async function fetchAllFlowApproverUsers() {
+    async function fetchAllFlowApproverUsers(user) {
       // 第一階段簽核者
       const supervisorUsers = await fetchSupervisorUsers(user.id);
 
